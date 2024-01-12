@@ -21,7 +21,7 @@ client.on("messageCreate", async message => {
 });
 
 client.on("messageCreate", async message => {
-  if(message.content === "hey") {
+  if(message.content === "aaaaaa") {
     message.channel.send("je stinkt")
   }
 });
