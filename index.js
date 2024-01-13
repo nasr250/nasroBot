@@ -66,7 +66,6 @@ client.on("messageCreate", async (message) => {
     {
       const prompt = contentAfterMention;
       console.log(prompt);
-      let userId = message.author.displayName;
 
       let threadId = userThreadMap.get(channel);
       if (!threadId) {
