@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/builders": "^1.7.0",
+    "@discordjs/voice": "^0.16.1",
     "axios": "^1.6.5",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
