@@ -1,8 +1,9 @@
 import * as dotenv from 'dotenv';
 import fs from "fs";
 import {OpenAI} from 'openai';
-import {joinVoiceChannel} from '@discordjs/voice';
+import {joinVoiceChannel, StreamType, getVoiceConnection, VoiceConnection, createAudioPlayer, createAudioResource } from '@discordjs/voice';
 import { Client, GatewayIntentBits } from 'discord.js'; // Merk op dat de correcte import wordt gebruikt
+import * as discordTTS from 'discord-tts';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const client = new Client({
     GatewayIntentBits.Guilds, 
     GatewayIntentBits.GuildMessages, 
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates
   ],
 });
 
@@ -97,7 +99,7 @@ client.on("messageCreate", async (message) => {
         threadId,
           { 
             assistant_id: myAssistant.id,
-            instructions:"je bent een chatbot genaamd nasroBot die in de discord server " + server + " zit, als mensen jou vragen stellen beantwoord jij die. Als zij grappen maken met je, moet je de grappen terug bij hun doen.  reageer met een grappige comeback als ze vervelend doen. praat met nederlandse straattaal maar wees cool ermee. Adopteer het taalgebruik van de gebruikers waarmee je praat. de naam op wie je reageert is " + message.author.displayName + ". je kan met verschillende mensen spreken in de chatroom, onthou het gesprek soms kan het tegen verschillende mensen zijn.", 
+            instructions:"Geef de verkeerde antwoorden wat je ook doet, blijf verkeerde antwoorden geven. je bent een chatbot genaamd nasroBot die in de discord server " + server + " zit, als mensen jou vragen stellen beantwoord jij die verkeerd en maak je hun wijs dat het wel de juiste antwoord is. Als zij grappen maken met je, moet je de grappen terug bij hun doen. reageer met een grappige comeback als ze vervelend doen. praat met nederlandse straattaal maar wees cool ermee. Adopteer het taalgebruik van de gebruikers waarmee je praat. je kan met verschillende mensen spreken in de chatroom, onthou het gesprek soms kan het tegen verschillende mensen zijn hierbij hun gebruikersID om beter onderscheid te maken " + message.author.id + "met als naam: " + message.author.displayName + ".", 
           }
         );
         runNum++;
@@ -148,10 +150,71 @@ client.on('interactionCreate', async (interaction) => {
             guildId: interaction.guild.id,
             adapterCreator: interaction.guild.voiceAdapterCreator,
           });
-    
+
           await interaction.reply(`Joined voice channel: ${voiceChannel.name}`);
         } else {
           await interaction.reply("You're not in a voice channel.");
         }
+  }
+});
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+  const member = newState.member;
+  const connection = getVoiceConnection(member.guild.id);
+
+  if (oldState.channel !== newState.channel) {
+    if (newState.channel && newState.channel.id === connection?.joinConfig?.channelId) {
+      console.log(`${member.user.tag} joined the voice channel where the bot is present: ${newState.channel.name}`);
+      // Play an .mp3 file
+      try {
+        const timeoutId = setTimeout(()=>{
+          const mp3FilePath = './media/sounds/entrance_sound.mp3'; // Replace with the actual path to your .mp3 file
+          const audioPlayer = createAudioPlayer();
+          const audioResource = createAudioResource(mp3FilePath);
+  
+          audioPlayer.play(audioResource);
+          connection.subscribe(audioPlayer);
+        }, 500);
+
+      } catch (error) {
+        console.error('Error playing .mp3 file:', error);
+      }
+      // Perform additional actions if needed
+    }
+  }
+});
+
+client.on('messageCreate', async (message) => {
+  // Check if the message author is a bot or the message doesn't start with a command prefix
+  if (message.author.bot || !message.content.startsWith('!tts')) return;
+
+  // Get the voice channel of the user who sent the command
+  const voiceChannel = message.member?.voice.channel;
+  
+
+  // Check if the user is in a voice channel
+  if (voiceChannel) {
+    try {
+
+      const textToSpeech = discordTTS.getVoiceStream(message.content.split(/ +/).slice(1).join(' ')); 
+      const audioPlayer = createAudioPlayer();
+      const resource = createAudioResource(textToSpeech, {inputType: StreamType.Arbitrary, inlineVolume:true});
+
+      // Join the voice channel
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator,
+      });
+
+      // Play the audio resource
+      audioPlayer.play(resource);
+      connection.subscribe(audioPlayer);
+
+    } catch (error) {
+      console.error('Error:', error.message);
+    }
+  } else {
+    message.reply('You need to be in a voice channel to use this command!');
   }
 });
